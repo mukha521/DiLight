@@ -16,7 +16,7 @@
 
 // I²C port handle
 #define TOF_I2C hi2c1
-extern I2C_HandleTypeDef TOF_I2C;
+extern  I2C_HandleTypeDef TOF_I2C;
 
 // Pins
 #define TOF_XSHUT_PORT		Sens_SHUT_GPIO_Port

@@ -49,7 +49,7 @@ struct FLASH_sector {
 #define DEFAULT_DIST_ON		500
 #define DEFAULT_DIST_OFF	1000
 
-#define CONF_TOKEN				0x000A0101							//32bit token to check the configuration struct in the FLASH (000A - DiLight; rev1.1)
+#define CONF_TOKEN				0x000A0200							//32bit token to check the configuration struct in the FLASH (000A - DiLight; rev2.0)
 #define CONF_FLASH_ADDR 	((uint32_t)0x0800F800)	//FLASH address of the page to save configuration to
 #define CONF_FLASH_PAGE 	31											//FLASH page number (from 0 to PgCount-1)
 
@@ -79,14 +79,14 @@ union FLASH_conf {
 } configuration;
 #define FLASH_CONF_SIZE 16
 
-uint8_t  TOF_Ready = 0;						// Flag to ignore TOF IRQ before it is initialized
-uint8_t  curLightLevel = 0;				// Current light level (0-99)
-uint16_t curDist = 0;							// Current measured distance in mm
-uint16_t btn_ticks;								// How many ticks the button is pressed (1 tick = 100ms)
-uint8_t  needConfig = 1;					// Need to configure the device
-uint8_t  startConfig = 0;					// Flag to start configuration sequence
-int8_t   dLevel = 1;							// Direction of fade: -1 for fade out; 1 for fade in;
-uint8_t  manualOn = 0;						// Flag to indicate a manual on
+uint8_t  TOF_Ready = 0;							// Flag to ignore TOF IRQ before it is initialized
+uint8_t  curLightLevel = 0;					// Current light level (0-99)
+uint16_t curDist = 0;								// Current measured distance in mm
+uint16_t btn_ticks;									// How many ticks the button is pressed (1 tick = 100ms)
+uint8_t  needConfig = 1;						// Need to configure the device. Timers won't "react" to events
+uint8_t  startConfig = 0;						// Flag to start configuration sequence
+int8_t   dLevel = 1;								// Direction of fade: -1 for fade out; 1 for fade in;
+uint8_t  manualOn = 0;							// Flag to indicate a manual on
 
 /* USER CODE END PV */
 
@@ -100,9 +100,9 @@ static void MX_CRC_Init(void);
 static void MX_TIM16_Init(void);
 /* USER CODE BEGIN PFP */
 
-void loadConfig(void);
-void saveConfig(void);
-void setLightLevel(uint8_t level);
+volatile void loadConfig(void);			// Load configuration from the FLASH memory
+volatile void saveConfig(void);			// Save configuration to the FLASH memory
+void setLightLevel(uint8_t level);	// Set the lights level (brightness) 0 - 99
 void configure(void);
 
 
@@ -112,7 +112,7 @@ void configure(void);
 /* USER CODE BEGIN 0 */
 
 //load configuration from FLASH
-void loadConfig(void) {
+volatile void loadConfig(void) {
 	uint32_t l_Address = CONF_FLASH_ADDR;
 	uint32_t l_Index = 0;
 
@@ -123,21 +123,19 @@ void loadConfig(void) {
 	  l_Address += 8;
 	}
 
-
+	//Calculate a hash from the configuration
 	if (HAL_CRC_Calculate(&hcrc, configuration.data32, 2) != configuration.sector.checksum
 			|| configuration.config.token != CONF_TOKEN) {
 		//First start or configuration is corrupted
 
 		saveConfig();  //Save dafault config
-	} else {
-		//Successfully read the configuration
+	} // else successfully read the configuration
 
-	}
 	needConfig = 0;
 }
 
 //save configuration to FLASH
-void saveConfig(void) {
+volatile void saveConfig(void) {
   static FLASH_EraseInitTypeDef EraseInitStruct;
   uint32_t l_Address = CONF_FLASH_ADDR;
   uint32_t l_Index = 0;
@@ -184,7 +182,6 @@ void configure(void) {
 	uint8_t i;
 
 	startConfig = 0;
-	//stopContinuous();
 
 	//Fast blink 3 times
 	needConfig = 1;
@@ -196,10 +193,7 @@ void configure(void) {
 		HAL_Delay(80);
 	}
 
-	//setMeasurementTimingBudget( 230 * 1000UL );		// integrate over 230 ms per measurement
-	// Start measurements every 250ms
 	//Configure ON distance
-	//startContinuous(250);
 	needConfig = 1;
 	while (needConfig) {
 		HAL_Delay(250);
@@ -211,7 +205,6 @@ void configure(void) {
 		else setLightLevel((uint8_t)(50 - curDist * 50 / 1400));
 	}
 	configuration.config.dist_on = curDist;
-	//stopContinuous();
 
 	//Fast blink 2 times
 	needConfig = 1;
@@ -224,7 +217,6 @@ void configure(void) {
 	}
 
 	//Configure OFF distance
-	//startContinuous(250);
 	needConfig = 1;
 	while (needConfig) {
 		HAL_Delay(250);
@@ -232,7 +224,6 @@ void configure(void) {
 		else setLightLevel((uint8_t)(50 - curDist * 50 / 1400));
 	}
 	configuration.config.dist_off = curDist;
-	//stopContinuous();
 
   saveConfig();
 
@@ -246,9 +237,6 @@ void configure(void) {
 		HAL_Delay(80);
 	}
 
-  //setMeasurementTimingBudget( 500 * 1000UL );		// integrate over 500 ms per measurement
-	// Start measurements every second
-	//startContinuous(1000);
 	needConfig = 0;
 }
 
@@ -288,9 +276,10 @@ int main(void)
   MX_CRC_Init();
   MX_TIM16_Init();
   /* USER CODE BEGIN 2 */
-  //TIM3 - PWM timer
-  //TIM16 - ticks timer (10Hz - 100ms)
-  //TIM17 - timer for light fading
+
+  // TIM3  - PWM timer
+  // TIM16 - ticks timer (10Hz - 100ms)
+  // TIM17 - timer for light fading
 
   loadConfig();
 
@@ -314,22 +303,8 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-	//uint8_t t = 50;
-	//int8_t di = 1;
-  //char str[12];
   while (1)
   {
-//  	setLightLevel(t);
-//  	if (t == 99) di = -1;
-//  	if (t == 0) di = 1;
-//  	t += di;;
-//  	HAL_Delay(10);
-
-//  	HAL_Delay(900);
-//  	//curDist = readRangeContinuousMillimeters(0);
-//  	snprintf(str, 12, "Dist: %4d\n", curDist);
-//  	HAL_UART_Transmit(&huart2, (uint8_t *)str, strlen(str), 100);
-
   	if (startConfig) {
   		configure();
   	}
@@ -643,44 +618,22 @@ void setLightLevel(uint8_t level) {
 	TIM3->CCR1 = curLightLevel;
 }
 
-//void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
-//	if (GPIO_Pin == Btn_INT_Pin) {
-//		if (HAL_GPIO_ReadPin(Btn_INT_GPIO_Port, Btn_INT_Pin)) {
-//			//rising edge interrupt
-//			btn_ticks = 0;
-//			HAL_TIM_Base_Start_IT(&htim16);
-//		} else {
-//			//falling edge interrupt
-//			HAL_TIM_Base_Stop_IT(&htim16);
-//			if (btn_ticks < 60) { //button was not held for more than 6 seconds
-//				//click();
-//				if (needConfig) {
-//					needConfig = 0;
-//				} else {
-//					if (curLightLevel == 99) curLightLevel = 0;
-//					else curLightLevel = 99;
-//					setLightLevel(curLightLevel);
-//				}
-//			}
-//		}
-//	}
-//
-//
-//}
-
 void HAL_GPIO_EXTI_Rising_Callback(uint16_t GPIO_Pin) {
+	// Start counting "ticks" when the sense-button is pressed
 	if (GPIO_Pin == Btn_INT_Pin) {
 		btn_ticks = 0;
 		HAL_TIM_Base_Start_IT(&htim16);
 	}
 }
 
+
 void HAL_GPIO_EXTI_Falling_Callback(uint16_t GPIO_Pin) {
 	uint16_t dist;
 
+	// Range sensor interrupt (measurement is done)
 	if (TOF_Ready && GPIO_Pin == Sens_INT_Pin) {
 		dist = readRangeContinuousMillimeters(0);
-		if (dist < 14000)	curDist = dist;
+		if (dist < 1400)	curDist = dist;
 		else curDist = 1400;
 		if (!needConfig && !manualOn) {
 			if (curDist <= configuration.config.dist_on && curLightLevel < 90) {
@@ -696,10 +649,11 @@ void HAL_GPIO_EXTI_Falling_Callback(uint16_t GPIO_Pin) {
 		}
 	}
 
+	// The sense-button is released
 	if (GPIO_Pin == Btn_INT_Pin) {
 		HAL_TIM_Base_Stop_IT(&htim16);
-		if (btn_ticks < 60) { //button was not held for more than 6 seconds
-			//click();
+		if (btn_ticks < 60) {
+			// Button was not held for more than 6 seconds
 			if (needConfig) {
 				needConfig = 0;
 			} else {
@@ -730,6 +684,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 		}
 	}
 
+	// Fade-in / fade-out animation
 	if(htim->Instance == TIM17) { //check if the interrupt comes from TIM17
 		curLightLevel += dLevel;
 		setLightLevel(curLightLevel);

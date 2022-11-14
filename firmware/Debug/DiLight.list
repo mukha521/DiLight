@@ -27,9 +27,9 @@ Idx Name          Size      VMA       LMA       File off  Algn
                   ALLOC
  11 .ARM.attributes 00000028  00000000  00000000  00020098  2**0
                   CONTENTS, READONLY
- 12 .debug_info   0001128e  00000000  00000000  000200c0  2**0
+ 12 .debug_info   0001128d  00000000  00000000  000200c0  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 13 .debug_abbrev 00002b70  00000000  00000000  0003134e  2**0
+ 13 .debug_abbrev 00002b70  00000000  00000000  0003134d  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
  14 .debug_aranges 00001130  00000000  00000000  00033ec0  2**3
                   CONTENTS, READONLY, DEBUGGING, OCTETS
@@ -37,13 +37,13 @@ Idx Name          Size      VMA       LMA       File off  Algn
                   CONTENTS, READONLY, DEBUGGING, OCTETS
  16 .debug_macro  00017358  00000000  00000000  00035fe8  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 17 .debug_line   00013e4a  00000000  00000000  0004d340  2**0
+ 17 .debug_line   00013e44  00000000  00000000  0004d340  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 18 .debug_str    00092472  00000000  00000000  0006118a  2**0
+ 18 .debug_str    00092472  00000000  00000000  00061184  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 19 .comment      00000050  00000000  00000000  000f35fc  2**0
+ 19 .comment      00000050  00000000  00000000  000f35f6  2**0
                   CONTENTS, READONLY
- 20 .debug_frame  0000401c  00000000  00000000  000f364c  2**2
+ 20 .debug_frame  0000401c  00000000  00000000  000f3648  2**2
                   CONTENTS, READONLY, DEBUGGING, OCTETS
 
 Disassembly of section .text:
@@ -1933,7 +1933,7 @@ Disassembly of section .text:
 /* USER CODE BEGIN 0 */
 
 //load configuration from FLASH
-void loadConfig(void) {
+volatile void loadConfig(void) {
  8000f40:	b580      	push	{r7, lr}
  8000f42:	b082      	sub	sp, #8
  8000f44:	af00      	add	r7, sp, #0
@@ -1972,7 +1972,7 @@ void loadConfig(void) {
  8000f74:	d9ec      	bls.n	8000f50 <loadConfig+0x10>
 	}
 
-
+	//Calculate a hash from the configuration
 	if (HAL_CRC_Calculate(&hcrc, configuration.data32, 2) != configuration.sector.checksum
  8000f76:	490d      	ldr	r1, [pc, #52]	; (8000fac <loadConfig+0x6c>)
  8000f78:	4b0e      	ldr	r3, [pc, #56]	; (8000fb4 <loadConfig+0x74>)
@@ -1994,10 +1994,8 @@ void loadConfig(void) {
 
 		saveConfig();  //Save dafault config
  8000f96:	f000 f813 	bl	8000fc0 <saveConfig>
-	} else {
-		//Successfully read the configuration
+	} // else successfully read the configuration
 
-	}
 	needConfig = 0;
  8000f9a:	4b08      	ldr	r3, [pc, #32]	; (8000fbc <loadConfig+0x7c>)
  8000f9c:	2200      	movs	r2, #0
@@ -2011,13 +2009,13 @@ void loadConfig(void) {
  8000fac:	20000210 	.word	0x20000210
  8000fb0:	0800f80f 	.word	0x0800f80f
  8000fb4:	200000b4 	.word	0x200000b4
- 8000fb8:	000a0101 	.word	0x000a0101
+ 8000fb8:	000a0200 	.word	0x000a0200
  8000fbc:	20000000 	.word	0x20000000
 
 08000fc0 <saveConfig>:
 
 //save configuration to FLASH
-void saveConfig(void) {
+volatile void saveConfig(void) {
  8000fc0:	b580      	push	{r7, lr}
  8000fc2:	b084      	sub	sp, #16
  8000fc4:	af00      	add	r7, sp, #0
@@ -2174,7 +2172,7 @@ void saveConfig(void) {
  80010ac:	0800f800 	.word	0x0800f800
  80010b0:	20000228 	.word	0x20000228
  80010b4:	20000210 	.word	0x20000210
- 80010b8:	000a0101 	.word	0x000a0101
+ 80010b8:	000a0200 	.word	0x000a0200
  80010bc:	200000b4 	.word	0x200000b4
  80010c0:	0800f80f 	.word	0x0800f80f
 
@@ -2190,7 +2188,6 @@ void configure(void) {
  80010ca:	4b5b      	ldr	r3, [pc, #364]	; (8001238 <configure+0x174>)
  80010cc:	2200      	movs	r2, #0
  80010ce:	701a      	strb	r2, [r3, #0]
-	//stopContinuous();
 
 	//Fast blink 3 times
 	needConfig = 1;
@@ -2227,11 +2224,9 @@ void configure(void) {
  8001108:	781b      	ldrb	r3, [r3, #0]
  800110a:	2b02      	cmp	r3, #2
  800110c:	d9ea      	bls.n	80010e4 <configure+0x20>
+	}
 
-	//setMeasurementTimingBudget( 230 * 1000UL );		// integrate over 230 ms per measurement
-	// Start measurements every 250ms
 	//Configure ON distance
-	//startContinuous(250);
 	needConfig = 1;
  800110e:	4b4b      	ldr	r3, [pc, #300]	; (800123c <configure+0x178>)
  8001110:	2201      	movs	r2, #1
@@ -2279,7 +2274,6 @@ void configure(void) {
  8001156:	881a      	ldrh	r2, [r3, #0]
  8001158:	4b3a      	ldr	r3, [pc, #232]	; (8001244 <configure+0x180>)
  800115a:	809a      	strh	r2, [r3, #4]
-	//stopContinuous();
 
 	//Fast blink 2 times
 	needConfig = 1;
@@ -2319,7 +2313,6 @@ void configure(void) {
 	}
 
 	//Configure OFF distance
-	//startContinuous(250);
 	needConfig = 1;
  800119a:	4b28      	ldr	r3, [pc, #160]	; (800123c <configure+0x178>)
  800119c:	2201      	movs	r2, #1
@@ -2363,7 +2356,6 @@ void configure(void) {
  80011e2:	881a      	ldrh	r2, [r3, #0]
  80011e4:	4b17      	ldr	r3, [pc, #92]	; (8001244 <configure+0x180>)
  80011e6:	80da      	strh	r2, [r3, #6]
-	//stopContinuous();
 
   saveConfig();
  80011e8:	f7ff feea 	bl	8000fc0 <saveConfig>
@@ -2405,9 +2397,6 @@ void configure(void) {
  8001228:	d9ea      	bls.n	8001200 <configure+0x13c>
 	}
 
-  //setMeasurementTimingBudget( 500 * 1000UL );		// integrate over 500 ms per measurement
-	// Start measurements every second
-	//startContinuous(1000);
 	needConfig = 0;
  800122a:	4b04      	ldr	r3, [pc, #16]	; (800123c <configure+0x178>)
  800122c:	2200      	movs	r2, #0
@@ -2462,10 +2451,10 @@ int main(void)
  8001264:	f000 f888 	bl	8001378 <MX_CRC_Init>
   MX_TIM16_Init();
  8001268:	f000 f968 	bl	800153c <MX_TIM16_Init>
-  /* USER CODE BEGIN 2 */
-  //TIM3 - PWM timer
-  //TIM16 - ticks timer (10Hz - 100ms)
-  //TIM17 - timer for light fading
+
+  // TIM3  - PWM timer
+  // TIM16 - ticks timer (10Hz - 100ms)
+  // TIM17 - timer for light fading
 
   loadConfig();
  800126c:	f7ff fe68 	bl	8000f40 <loadConfig>
@@ -2499,11 +2488,11 @@ int main(void)
  8001290:	2100      	movs	r1, #0
  8001292:	0018      	movs	r0, r3
  8001294:	f003 f9c0 	bl	8004618 <HAL_TIM_PWM_Start>
-//  	HAL_Delay(900);
-//  	//curDist = readRangeContinuousMillimeters(0);
-//  	snprintf(str, 12, "Dist: %4d\n", curDist);
-//  	HAL_UART_Transmit(&huart2, (uint8_t *)str, strlen(str), 100);
 
+  /* Infinite loop */
+  /* USER CODE BEGIN WHILE */
+  while (1)
+  {
   	if (startConfig) {
  8001298:	4b07      	ldr	r3, [pc, #28]	; (80012b8 <main+0x70>)
  800129a:	781b      	ldrb	r3, [r3, #0]
@@ -3320,10 +3309,6 @@ void setLightLevel(uint8_t level) {
  8001720:	40000400 	.word	0x40000400
 
 08001724 <HAL_GPIO_EXTI_Rising_Callback>:
-//	}
-//
-//
-//}
 
 void HAL_GPIO_EXTI_Rising_Callback(uint16_t GPIO_Pin) {
  8001724:	b580      	push	{r7, lr}
@@ -3332,6 +3317,7 @@ void HAL_GPIO_EXTI_Rising_Callback(uint16_t GPIO_Pin) {
  800172a:	0002      	movs	r2, r0
  800172c:	1dbb      	adds	r3, r7, #6
  800172e:	801a      	strh	r2, [r3, #0]
+	// Start counting "ticks" when the sense-button is pressed
 	if (GPIO_Pin == Btn_INT_Pin) {
  8001730:	1dbb      	adds	r3, r7, #6
  8001732:	881b      	ldrh	r3, [r3, #0]
@@ -3357,6 +3343,7 @@ void HAL_GPIO_EXTI_Rising_Callback(uint16_t GPIO_Pin) {
 
 08001758 <HAL_GPIO_EXTI_Falling_Callback>:
 
+
 void HAL_GPIO_EXTI_Falling_Callback(uint16_t GPIO_Pin) {
  8001758:	b5b0      	push	{r4, r5, r7, lr}
  800175a:	b084      	sub	sp, #16
@@ -3366,15 +3353,16 @@ void HAL_GPIO_EXTI_Falling_Callback(uint16_t GPIO_Pin) {
  8001762:	801a      	strh	r2, [r3, #0]
 	uint16_t dist;
 
+	// Range sensor interrupt (measurement is done)
 	if (TOF_Ready && GPIO_Pin == Sens_INT_Pin) {
- 8001764:	4b3e      	ldr	r3, [pc, #248]	; (8001860 <HAL_GPIO_EXTI_Falling_Callback+0x108>)
+ 8001764:	4b3f      	ldr	r3, [pc, #252]	; (8001864 <HAL_GPIO_EXTI_Falling_Callback+0x10c>)
  8001766:	781b      	ldrb	r3, [r3, #0]
  8001768:	2b00      	cmp	r3, #0
- 800176a:	d043      	beq.n	80017f4 <HAL_GPIO_EXTI_Falling_Callback+0x9c>
+ 800176a:	d044      	beq.n	80017f6 <HAL_GPIO_EXTI_Falling_Callback+0x9e>
  800176c:	1dbb      	adds	r3, r7, #6
  800176e:	881b      	ldrh	r3, [r3, #0]
  8001770:	2b20      	cmp	r3, #32
- 8001772:	d13f      	bne.n	80017f4 <HAL_GPIO_EXTI_Falling_Callback+0x9c>
+ 8001772:	d140      	bne.n	80017f6 <HAL_GPIO_EXTI_Falling_Callback+0x9e>
 		dist = readRangeContinuousMillimeters(0);
  8001774:	250e      	movs	r5, #14
  8001776:	197c      	adds	r4, r7, r5
@@ -3382,150 +3370,152 @@ void HAL_GPIO_EXTI_Falling_Callback(uint16_t GPIO_Pin) {
  800177a:	f004 fd27 	bl	80061cc <readRangeContinuousMillimeters>
  800177e:	0003      	movs	r3, r0
  8001780:	8023      	strh	r3, [r4, #0]
-		if (dist < 14000)	curDist = dist;
+		if (dist < 1400)	curDist = dist;
  8001782:	0029      	movs	r1, r5
  8001784:	187b      	adds	r3, r7, r1
- 8001786:	881b      	ldrh	r3, [r3, #0]
- 8001788:	4a36      	ldr	r2, [pc, #216]	; (8001864 <HAL_GPIO_EXTI_Falling_Callback+0x10c>)
- 800178a:	4293      	cmp	r3, r2
- 800178c:	d804      	bhi.n	8001798 <HAL_GPIO_EXTI_Falling_Callback+0x40>
- 800178e:	4b36      	ldr	r3, [pc, #216]	; (8001868 <HAL_GPIO_EXTI_Falling_Callback+0x110>)
- 8001790:	187a      	adds	r2, r7, r1
- 8001792:	8812      	ldrh	r2, [r2, #0]
- 8001794:	801a      	strh	r2, [r3, #0]
- 8001796:	e003      	b.n	80017a0 <HAL_GPIO_EXTI_Falling_Callback+0x48>
+ 8001786:	881a      	ldrh	r2, [r3, #0]
+ 8001788:	23af      	movs	r3, #175	; 0xaf
+ 800178a:	00db      	lsls	r3, r3, #3
+ 800178c:	429a      	cmp	r2, r3
+ 800178e:	d204      	bcs.n	800179a <HAL_GPIO_EXTI_Falling_Callback+0x42>
+ 8001790:	4b35      	ldr	r3, [pc, #212]	; (8001868 <HAL_GPIO_EXTI_Falling_Callback+0x110>)
+ 8001792:	187a      	adds	r2, r7, r1
+ 8001794:	8812      	ldrh	r2, [r2, #0]
+ 8001796:	801a      	strh	r2, [r3, #0]
+ 8001798:	e003      	b.n	80017a2 <HAL_GPIO_EXTI_Falling_Callback+0x4a>
 		else curDist = 1400;
- 8001798:	4b33      	ldr	r3, [pc, #204]	; (8001868 <HAL_GPIO_EXTI_Falling_Callback+0x110>)
- 800179a:	22af      	movs	r2, #175	; 0xaf
- 800179c:	00d2      	lsls	r2, r2, #3
- 800179e:	801a      	strh	r2, [r3, #0]
+ 800179a:	4b33      	ldr	r3, [pc, #204]	; (8001868 <HAL_GPIO_EXTI_Falling_Callback+0x110>)
+ 800179c:	22af      	movs	r2, #175	; 0xaf
+ 800179e:	00d2      	lsls	r2, r2, #3
+ 80017a0:	801a      	strh	r2, [r3, #0]
 		if (!needConfig && !manualOn) {
- 80017a0:	4b32      	ldr	r3, [pc, #200]	; (800186c <HAL_GPIO_EXTI_Falling_Callback+0x114>)
- 80017a2:	781b      	ldrb	r3, [r3, #0]
- 80017a4:	2b00      	cmp	r3, #0
- 80017a6:	d125      	bne.n	80017f4 <HAL_GPIO_EXTI_Falling_Callback+0x9c>
- 80017a8:	4b31      	ldr	r3, [pc, #196]	; (8001870 <HAL_GPIO_EXTI_Falling_Callback+0x118>)
- 80017aa:	781b      	ldrb	r3, [r3, #0]
- 80017ac:	2b00      	cmp	r3, #0
- 80017ae:	d121      	bne.n	80017f4 <HAL_GPIO_EXTI_Falling_Callback+0x9c>
+ 80017a2:	4b32      	ldr	r3, [pc, #200]	; (800186c <HAL_GPIO_EXTI_Falling_Callback+0x114>)
+ 80017a4:	781b      	ldrb	r3, [r3, #0]
+ 80017a6:	2b00      	cmp	r3, #0
+ 80017a8:	d125      	bne.n	80017f6 <HAL_GPIO_EXTI_Falling_Callback+0x9e>
+ 80017aa:	4b31      	ldr	r3, [pc, #196]	; (8001870 <HAL_GPIO_EXTI_Falling_Callback+0x118>)
+ 80017ac:	781b      	ldrb	r3, [r3, #0]
+ 80017ae:	2b00      	cmp	r3, #0
+ 80017b0:	d121      	bne.n	80017f6 <HAL_GPIO_EXTI_Falling_Callback+0x9e>
 			if (curDist <= configuration.config.dist_on && curLightLevel < 90) {
- 80017b0:	4b30      	ldr	r3, [pc, #192]	; (8001874 <HAL_GPIO_EXTI_Falling_Callback+0x11c>)
- 80017b2:	889a      	ldrh	r2, [r3, #4]
- 80017b4:	4b2c      	ldr	r3, [pc, #176]	; (8001868 <HAL_GPIO_EXTI_Falling_Callback+0x110>)
- 80017b6:	881b      	ldrh	r3, [r3, #0]
- 80017b8:	429a      	cmp	r2, r3
- 80017ba:	d30a      	bcc.n	80017d2 <HAL_GPIO_EXTI_Falling_Callback+0x7a>
- 80017bc:	4b2e      	ldr	r3, [pc, #184]	; (8001878 <HAL_GPIO_EXTI_Falling_Callback+0x120>)
- 80017be:	781b      	ldrb	r3, [r3, #0]
- 80017c0:	2b59      	cmp	r3, #89	; 0x59
- 80017c2:	d806      	bhi.n	80017d2 <HAL_GPIO_EXTI_Falling_Callback+0x7a>
+ 80017b2:	4b30      	ldr	r3, [pc, #192]	; (8001874 <HAL_GPIO_EXTI_Falling_Callback+0x11c>)
+ 80017b4:	889a      	ldrh	r2, [r3, #4]
+ 80017b6:	4b2c      	ldr	r3, [pc, #176]	; (8001868 <HAL_GPIO_EXTI_Falling_Callback+0x110>)
+ 80017b8:	881b      	ldrh	r3, [r3, #0]
+ 80017ba:	429a      	cmp	r2, r3
+ 80017bc:	d30a      	bcc.n	80017d4 <HAL_GPIO_EXTI_Falling_Callback+0x7c>
+ 80017be:	4b2e      	ldr	r3, [pc, #184]	; (8001878 <HAL_GPIO_EXTI_Falling_Callback+0x120>)
+ 80017c0:	781b      	ldrb	r3, [r3, #0]
+ 80017c2:	2b59      	cmp	r3, #89	; 0x59
+ 80017c4:	d806      	bhi.n	80017d4 <HAL_GPIO_EXTI_Falling_Callback+0x7c>
 				//Turn on the lights
 				dLevel = 2;
- 80017c4:	4b2d      	ldr	r3, [pc, #180]	; (800187c <HAL_GPIO_EXTI_Falling_Callback+0x124>)
- 80017c6:	2202      	movs	r2, #2
- 80017c8:	701a      	strb	r2, [r3, #0]
+ 80017c6:	4b2d      	ldr	r3, [pc, #180]	; (800187c <HAL_GPIO_EXTI_Falling_Callback+0x124>)
+ 80017c8:	2202      	movs	r2, #2
+ 80017ca:	701a      	strb	r2, [r3, #0]
 				HAL_TIM_Base_Start_IT(&htim17);
- 80017ca:	4b2d      	ldr	r3, [pc, #180]	; (8001880 <HAL_GPIO_EXTI_Falling_Callback+0x128>)
- 80017cc:	0018      	movs	r0, r3
- 80017ce:	f002 fe41 	bl	8004454 <HAL_TIM_Base_Start_IT>
+ 80017cc:	4b2c      	ldr	r3, [pc, #176]	; (8001880 <HAL_GPIO_EXTI_Falling_Callback+0x128>)
+ 80017ce:	0018      	movs	r0, r3
+ 80017d0:	f002 fe40 	bl	8004454 <HAL_TIM_Base_Start_IT>
 			}
 			if (curDist >= configuration.config.dist_off && curLightLevel == 99) {
- 80017d2:	4b28      	ldr	r3, [pc, #160]	; (8001874 <HAL_GPIO_EXTI_Falling_Callback+0x11c>)
- 80017d4:	88da      	ldrh	r2, [r3, #6]
- 80017d6:	4b24      	ldr	r3, [pc, #144]	; (8001868 <HAL_GPIO_EXTI_Falling_Callback+0x110>)
- 80017d8:	881b      	ldrh	r3, [r3, #0]
- 80017da:	429a      	cmp	r2, r3
- 80017dc:	d80a      	bhi.n	80017f4 <HAL_GPIO_EXTI_Falling_Callback+0x9c>
- 80017de:	4b26      	ldr	r3, [pc, #152]	; (8001878 <HAL_GPIO_EXTI_Falling_Callback+0x120>)
- 80017e0:	781b      	ldrb	r3, [r3, #0]
- 80017e2:	2b63      	cmp	r3, #99	; 0x63
- 80017e4:	d106      	bne.n	80017f4 <HAL_GPIO_EXTI_Falling_Callback+0x9c>
+ 80017d4:	4b27      	ldr	r3, [pc, #156]	; (8001874 <HAL_GPIO_EXTI_Falling_Callback+0x11c>)
+ 80017d6:	88da      	ldrh	r2, [r3, #6]
+ 80017d8:	4b23      	ldr	r3, [pc, #140]	; (8001868 <HAL_GPIO_EXTI_Falling_Callback+0x110>)
+ 80017da:	881b      	ldrh	r3, [r3, #0]
+ 80017dc:	429a      	cmp	r2, r3
+ 80017de:	d80a      	bhi.n	80017f6 <HAL_GPIO_EXTI_Falling_Callback+0x9e>
+ 80017e0:	4b25      	ldr	r3, [pc, #148]	; (8001878 <HAL_GPIO_EXTI_Falling_Callback+0x120>)
+ 80017e2:	781b      	ldrb	r3, [r3, #0]
+ 80017e4:	2b63      	cmp	r3, #99	; 0x63
+ 80017e6:	d106      	bne.n	80017f6 <HAL_GPIO_EXTI_Falling_Callback+0x9e>
 				//Turn off the lights
 				dLevel = -1;
- 80017e6:	4b25      	ldr	r3, [pc, #148]	; (800187c <HAL_GPIO_EXTI_Falling_Callback+0x124>)
- 80017e8:	22ff      	movs	r2, #255	; 0xff
- 80017ea:	701a      	strb	r2, [r3, #0]
+ 80017e8:	4b24      	ldr	r3, [pc, #144]	; (800187c <HAL_GPIO_EXTI_Falling_Callback+0x124>)
+ 80017ea:	22ff      	movs	r2, #255	; 0xff
+ 80017ec:	701a      	strb	r2, [r3, #0]
 				HAL_TIM_Base_Start_IT(&htim17);
- 80017ec:	4b24      	ldr	r3, [pc, #144]	; (8001880 <HAL_GPIO_EXTI_Falling_Callback+0x128>)
- 80017ee:	0018      	movs	r0, r3
- 80017f0:	f002 fe30 	bl	8004454 <HAL_TIM_Base_Start_IT>
+ 80017ee:	4b24      	ldr	r3, [pc, #144]	; (8001880 <HAL_GPIO_EXTI_Falling_Callback+0x128>)
+ 80017f0:	0018      	movs	r0, r3
+ 80017f2:	f002 fe2f 	bl	8004454 <HAL_TIM_Base_Start_IT>
 			}
 		}
 	}
 
+	// The sense-button is released
 	if (GPIO_Pin == Btn_INT_Pin) {
- 80017f4:	1dbb      	adds	r3, r7, #6
- 80017f6:	881b      	ldrh	r3, [r3, #0]
- 80017f8:	2b01      	cmp	r3, #1
- 80017fa:	d12d      	bne.n	8001858 <HAL_GPIO_EXTI_Falling_Callback+0x100>
+ 80017f6:	1dbb      	adds	r3, r7, #6
+ 80017f8:	881b      	ldrh	r3, [r3, #0]
+ 80017fa:	2b01      	cmp	r3, #1
+ 80017fc:	d12d      	bne.n	800185a <HAL_GPIO_EXTI_Falling_Callback+0x102>
 		HAL_TIM_Base_Stop_IT(&htim16);
- 80017fc:	4b21      	ldr	r3, [pc, #132]	; (8001884 <HAL_GPIO_EXTI_Falling_Callback+0x12c>)
- 80017fe:	0018      	movs	r0, r3
- 8001800:	f002 fe7c 	bl	80044fc <HAL_TIM_Base_Stop_IT>
-		if (btn_ticks < 60) { //button was not held for more than 6 seconds
- 8001804:	4b20      	ldr	r3, [pc, #128]	; (8001888 <HAL_GPIO_EXTI_Falling_Callback+0x130>)
- 8001806:	881b      	ldrh	r3, [r3, #0]
- 8001808:	2b3b      	cmp	r3, #59	; 0x3b
- 800180a:	d825      	bhi.n	8001858 <HAL_GPIO_EXTI_Falling_Callback+0x100>
-			//click();
+ 80017fe:	4b21      	ldr	r3, [pc, #132]	; (8001884 <HAL_GPIO_EXTI_Falling_Callback+0x12c>)
+ 8001800:	0018      	movs	r0, r3
+ 8001802:	f002 fe7b 	bl	80044fc <HAL_TIM_Base_Stop_IT>
+		if (btn_ticks < 60) {
+ 8001806:	4b20      	ldr	r3, [pc, #128]	; (8001888 <HAL_GPIO_EXTI_Falling_Callback+0x130>)
+ 8001808:	881b      	ldrh	r3, [r3, #0]
+ 800180a:	2b3b      	cmp	r3, #59	; 0x3b
+ 800180c:	d825      	bhi.n	800185a <HAL_GPIO_EXTI_Falling_Callback+0x102>
+			// Button was not held for more than 6 seconds
 			if (needConfig) {
- 800180c:	4b17      	ldr	r3, [pc, #92]	; (800186c <HAL_GPIO_EXTI_Falling_Callback+0x114>)
- 800180e:	781b      	ldrb	r3, [r3, #0]
- 8001810:	2b00      	cmp	r3, #0
- 8001812:	d003      	beq.n	800181c <HAL_GPIO_EXTI_Falling_Callback+0xc4>
+ 800180e:	4b17      	ldr	r3, [pc, #92]	; (800186c <HAL_GPIO_EXTI_Falling_Callback+0x114>)
+ 8001810:	781b      	ldrb	r3, [r3, #0]
+ 8001812:	2b00      	cmp	r3, #0
+ 8001814:	d003      	beq.n	800181e <HAL_GPIO_EXTI_Falling_Callback+0xc6>
 				needConfig = 0;
- 8001814:	4b15      	ldr	r3, [pc, #84]	; (800186c <HAL_GPIO_EXTI_Falling_Callback+0x114>)
- 8001816:	2200      	movs	r2, #0
- 8001818:	701a      	strb	r2, [r3, #0]
+ 8001816:	4b15      	ldr	r3, [pc, #84]	; (800186c <HAL_GPIO_EXTI_Falling_Callback+0x114>)
+ 8001818:	2200      	movs	r2, #0
+ 800181a:	701a      	strb	r2, [r3, #0]
 				}
 				setLightLevel(curLightLevel);
 			}
 		}
 	}
 }
- 800181a:	e01d      	b.n	8001858 <HAL_GPIO_EXTI_Falling_Callback+0x100>
+ 800181c:	e01d      	b.n	800185a <HAL_GPIO_EXTI_Falling_Callback+0x102>
 				if (curLightLevel < 90){
- 800181c:	4b16      	ldr	r3, [pc, #88]	; (8001878 <HAL_GPIO_EXTI_Falling_Callback+0x120>)
- 800181e:	781b      	ldrb	r3, [r3, #0]
- 8001820:	2b59      	cmp	r3, #89	; 0x59
- 8001822:	d80a      	bhi.n	800183a <HAL_GPIO_EXTI_Falling_Callback+0xe2>
+ 800181e:	4b16      	ldr	r3, [pc, #88]	; (8001878 <HAL_GPIO_EXTI_Falling_Callback+0x120>)
+ 8001820:	781b      	ldrb	r3, [r3, #0]
+ 8001822:	2b59      	cmp	r3, #89	; 0x59
+ 8001824:	d80a      	bhi.n	800183c <HAL_GPIO_EXTI_Falling_Callback+0xe4>
 					manualOn = 1;
- 8001824:	4b12      	ldr	r3, [pc, #72]	; (8001870 <HAL_GPIO_EXTI_Falling_Callback+0x118>)
- 8001826:	2201      	movs	r2, #1
- 8001828:	701a      	strb	r2, [r3, #0]
+ 8001826:	4b12      	ldr	r3, [pc, #72]	; (8001870 <HAL_GPIO_EXTI_Falling_Callback+0x118>)
+ 8001828:	2201      	movs	r2, #1
+ 800182a:	701a      	strb	r2, [r3, #0]
 					dLevel = 2;
- 800182a:	4b14      	ldr	r3, [pc, #80]	; (800187c <HAL_GPIO_EXTI_Falling_Callback+0x124>)
- 800182c:	2202      	movs	r2, #2
- 800182e:	701a      	strb	r2, [r3, #0]
+ 800182c:	4b13      	ldr	r3, [pc, #76]	; (800187c <HAL_GPIO_EXTI_Falling_Callback+0x124>)
+ 800182e:	2202      	movs	r2, #2
+ 8001830:	701a      	strb	r2, [r3, #0]
 					HAL_TIM_Base_Start_IT(&htim17);
- 8001830:	4b13      	ldr	r3, [pc, #76]	; (8001880 <HAL_GPIO_EXTI_Falling_Callback+0x128>)
- 8001832:	0018      	movs	r0, r3
- 8001834:	f002 fe0e 	bl	8004454 <HAL_TIM_Base_Start_IT>
- 8001838:	e009      	b.n	800184e <HAL_GPIO_EXTI_Falling_Callback+0xf6>
+ 8001832:	4b13      	ldr	r3, [pc, #76]	; (8001880 <HAL_GPIO_EXTI_Falling_Callback+0x128>)
+ 8001834:	0018      	movs	r0, r3
+ 8001836:	f002 fe0d 	bl	8004454 <HAL_TIM_Base_Start_IT>
+ 800183a:	e009      	b.n	8001850 <HAL_GPIO_EXTI_Falling_Callback+0xf8>
 					manualOn = 0;
- 800183a:	4b0d      	ldr	r3, [pc, #52]	; (8001870 <HAL_GPIO_EXTI_Falling_Callback+0x118>)
- 800183c:	2200      	movs	r2, #0
- 800183e:	701a      	strb	r2, [r3, #0]
+ 800183c:	4b0c      	ldr	r3, [pc, #48]	; (8001870 <HAL_GPIO_EXTI_Falling_Callback+0x118>)
+ 800183e:	2200      	movs	r2, #0
+ 8001840:	701a      	strb	r2, [r3, #0]
 					dLevel = -1;
- 8001840:	4b0e      	ldr	r3, [pc, #56]	; (800187c <HAL_GPIO_EXTI_Falling_Callback+0x124>)
- 8001842:	22ff      	movs	r2, #255	; 0xff
- 8001844:	701a      	strb	r2, [r3, #0]
+ 8001842:	4b0e      	ldr	r3, [pc, #56]	; (800187c <HAL_GPIO_EXTI_Falling_Callback+0x124>)
+ 8001844:	22ff      	movs	r2, #255	; 0xff
+ 8001846:	701a      	strb	r2, [r3, #0]
 					HAL_TIM_Base_Start_IT(&htim17);
- 8001846:	4b0e      	ldr	r3, [pc, #56]	; (8001880 <HAL_GPIO_EXTI_Falling_Callback+0x128>)
- 8001848:	0018      	movs	r0, r3
- 800184a:	f002 fe03 	bl	8004454 <HAL_TIM_Base_Start_IT>
+ 8001848:	4b0d      	ldr	r3, [pc, #52]	; (8001880 <HAL_GPIO_EXTI_Falling_Callback+0x128>)
+ 800184a:	0018      	movs	r0, r3
+ 800184c:	f002 fe02 	bl	8004454 <HAL_TIM_Base_Start_IT>
 				setLightLevel(curLightLevel);
- 800184e:	4b0a      	ldr	r3, [pc, #40]	; (8001878 <HAL_GPIO_EXTI_Falling_Callback+0x120>)
- 8001850:	781b      	ldrb	r3, [r3, #0]
- 8001852:	0018      	movs	r0, r3
- 8001854:	f7ff ff48 	bl	80016e8 <setLightLevel>
+ 8001850:	4b09      	ldr	r3, [pc, #36]	; (8001878 <HAL_GPIO_EXTI_Falling_Callback+0x120>)
+ 8001852:	781b      	ldrb	r3, [r3, #0]
+ 8001854:	0018      	movs	r0, r3
+ 8001856:	f7ff ff47 	bl	80016e8 <setLightLevel>
 }
- 8001858:	46c0      	nop			; (mov r8, r8)
- 800185a:	46bd      	mov	sp, r7
- 800185c:	b004      	add	sp, #16
- 800185e:	bdb0      	pop	{r4, r5, r7, pc}
- 8001860:	20000220 	.word	0x20000220
- 8001864:	000036af 	.word	0x000036af
+ 800185a:	46c0      	nop			; (mov r8, r8)
+ 800185c:	46bd      	mov	sp, r7
+ 800185e:	b004      	add	sp, #16
+ 8001860:	bdb0      	pop	{r4, r5, r7, pc}
+ 8001862:	46c0      	nop			; (mov r8, r8)
+ 8001864:	20000220 	.word	0x20000220
  8001868:	20000222 	.word	0x20000222
  800186c:	20000000 	.word	0x20000000
  8001870:	20000227 	.word	0x20000227
@@ -3574,6 +3564,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 		}
 	}
 
+	// Fade-in / fade-out animation
 	if(htim->Instance == TIM17) { //check if the interrupt comes from TIM17
  80018c2:	687b      	ldr	r3, [r7, #4]
  80018c4:	681b      	ldr	r3, [r3, #0]
