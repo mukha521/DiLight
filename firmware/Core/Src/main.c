@@ -100,10 +100,11 @@ static void MX_CRC_Init(void);
 static void MX_TIM16_Init(void);
 /* USER CODE BEGIN PFP */
 
-volatile void loadConfig(void);			// Load configuration from the FLASH memory
-volatile void saveConfig(void);			// Save configuration to the FLASH memory
-void setLightLevel(uint8_t level);	// Set the lights level (brightness) 0 - 99
-void configure(void);
+volatile void loadConfig(void);							// Load configuration from the FLASH memory
+volatile void saveConfig(void);							// Save configuration to the FLASH memory
+volatile void setLightLevel(uint8_t level);	// Set the lights level (brightness) 0 - 99
+void fastBlink(uint8_t count);							// Fast blink LEDs `count` times
+void configure(void);												// Range configuration procedure (set on and off ranges)
 
 
 /* USER CODE END PFP */
@@ -178,23 +179,29 @@ volatile void saveConfig(void) {
   HAL_Delay(50);
 }
 
-void configure(void) {
+// Fast blink LEDs `count` times
+void fastBlink(uint8_t count) {
 	uint8_t i;
 
-	startConfig = 0;
-
-	//Fast blink 3 times
-	needConfig = 1;
 	setLightLevel(0);
-	for (i = 0; i < 3; i++) {
+	for (i = 0; i < count; i++) {
 		setLightLevel(99);
 		HAL_Delay(80);
 		setLightLevel(0);
 		HAL_Delay(80);
 	}
+}
+
+// Range configuration procedure (set on and off ranges)
+void configure(void) {
+	startConfig = 0;
+
+	//Fast blink 3 times
+	needConfig = 1;
+	fastBlink(3);
 
 	//Configure ON distance
-	needConfig = 1;
+	needConfig = 1;								// in case the button was touched during fast blinks
 	while (needConfig) {
 		HAL_Delay(250);
 		if (curDist > 1400) setLightLevel(0);
@@ -208,16 +215,10 @@ void configure(void) {
 
 	//Fast blink 2 times
 	needConfig = 1;
-	setLightLevel(0);
-	for (i = 0; i < 2; i++) {
-		setLightLevel(99);
-		HAL_Delay(80);
-		setLightLevel(0);
-		HAL_Delay(80);
-	}
+	fastBlink(2);
 
 	//Configure OFF distance
-	needConfig = 1;
+	needConfig = 1;								// in case the button was touched during fast blinks
 	while (needConfig) {
 		HAL_Delay(250);
 		if (curDist > 1400) setLightLevel(0);
@@ -229,13 +230,7 @@ void configure(void) {
 
 	//Fast blink 5 times
   needConfig = 1;
-  setLightLevel(0);
-	for (i = 0; i < 5; i++) {
-		setLightLevel(99);
-		HAL_Delay(80);
-		setLightLevel(0);
-		HAL_Delay(80);
-	}
+  fastBlink(5);
 
 	needConfig = 0;
 }
@@ -283,20 +278,27 @@ int main(void)
 
   loadConfig();
 
-  initVL53L0X(1);
-	// lower the return signal rate limit (default is 0.25 MCPS)
-	// setSignalRateLimit(0.1);
-	// increase laser pulse periods (defaults are 14 and 10 PCLKs)
-	// setVcselPulsePeriod(VcselPeriodPreRange, 18);
-	// setVcselPulsePeriod(VcselPeriodFinalRange, 14);
-  TOF_Ready = 1;
-  setMeasurementTimingBudget( 500 * 1000UL );		// integrate over 500 ms per measurement
+  // Set IO timeout for range sensor
+  setTimeout(250);
 
-  // Start measurements every second
-  startContinuous(1000);
+  TOF_Ready = initVL53L0X(1);
+  if (TOF_Ready) {
+		// lower the return signal rate limit (default is 0.25 MCPS)
+		// setSignalRateLimit(0.1);
+		// increase laser pulse periods (defaults are 14 and 10 PCLKs)
+		// setVcselPulsePeriod(VcselPeriodPreRange, 18);
+		// setVcselPulsePeriod(VcselPeriodFinalRange, 14);
+		setMeasurementTimingBudget( 500 * 1000UL );		// integrate over 500 ms per measurement
 
+		// Start measurements every second
+		startContinuous(1000);
+  }
   HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
 
+  // Fast-blink 10 times to indicate range sensor error
+	if (!TOF_Ready) {
+		fastBlink(10);
+	}
 
 
   /* USER CODE END 2 */
@@ -308,6 +310,7 @@ int main(void)
   	if (startConfig) {
   		configure();
   	}
+
   	HAL_Delay(100);
     /* USER CODE END WHILE */
 
@@ -611,7 +614,7 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 
-void setLightLevel(uint8_t level) {
+volatile void setLightLevel(uint8_t level) {
 	if (level > 99) level = 99;
 	curLightLevel = level;
 

@@ -10,10 +10,10 @@
 // Local variables within this file (private)
 //---------------------------------------------------------
 uint8_t  g_i2cAddr   = ADDRESS_DEFAULT;
-uint16_t g_ioTimeout = 0;  // no timeout
+uint16_t g_ioTimeout = 0;			// 0 = no timeout
 uint8_t  g_isTimeout = 0;
 uint16_t g_timeoutStartMs;
-uint8_t  g_stopVariable; // read by init and used when starting measurement; is StopVariable field of VL53L0X_DevData_t structure in API
+uint8_t  g_stopVariable;			// read by init and used when starting measurement; is StopVariable field of VL53L0X_DevData_t structure in API
 uint32_t g_measTimBudUs;
 
 //---------------------------------------------------------
