@@ -1,0 +1,22 @@
+# Prerequisites
+*.d
+
+# Object files
+*.o
+*.ko
+*.obj
+*.elf
+
+# Linker output
+*.ilk
+*.map
+*.exp
+
+# Debug files
+*.dSYM/
+*.su
+*.idb
+*.pdb
+
+firmware/Debug/
+kicad/rev.2.0/DiLight_2.0-backups/
