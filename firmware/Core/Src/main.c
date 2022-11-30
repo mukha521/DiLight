@@ -46,8 +46,10 @@ struct FLASH_sector {
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 
-#define DEFAULT_DIST_ON		500
-#define DEFAULT_DIST_OFF	1000
+#define DEFAULT_DIST_ON		500											//Default lights on distance
+#define DEFAULT_DIST_OFF	1000										//Default lights off distance
+#define MIN_DIST_GAP			100											//Min gap between on and off distances
+#define MAX_DIST					1400										//Max distance that could be reliably measured by the sensor
 
 #define CONF_TOKEN				0x000A0200							//32bit token to check the configuration struct in the FLASH (000A - DiLight; rev2.0)
 #define CONF_FLASH_ADDR 	((uint32_t)0x0800F800)	//FLASH address of the page to save configuration to
@@ -159,8 +161,11 @@ volatile void saveConfig(void) {
 	  configuration.sector.counter = 0;
   }
 
-  if (configuration.config.dist_off > 1400) configuration.config.dist_off = 1400;
-  if (configuration.config.dist_on > configuration.config.dist_off) configuration.config.dist_on = configuration.config.dist_off;
+  // Check if the distances are good.
+  // (1 max distance is respected. 2 min gap between on and off distances is respected)
+  if (configuration.config.dist_off > MAX_DIST) configuration.config.dist_off = MAX_DIST;
+  if (configuration.config.dist_off < MIN_DIST_GAP) configuration.config.dist_off = MIN_DIST_GAP;
+  if (configuration.config.dist_on > configuration.config.dist_off - MIN_DIST_GAP) configuration.config.dist_on = configuration.config.dist_off - MIN_DIST_GAP;
   configuration.sector.counter += 1;
   configuration.sector.checksum = HAL_CRC_Calculate(&hcrc, configuration.data32, 2);
 
@@ -201,30 +206,30 @@ void configure(void) {
 	fastBlink(3);
 
 	//Configure ON distance
-	needConfig = 1;								// in case the button was touched during fast blinks
+	needConfig = 1;															// in case the button was touched during fast blinks
 	while (needConfig) {
 		HAL_Delay(250);
-		if (curDist > 1400) setLightLevel(0);
+		if (curDist > MAX_DIST - MIN_DIST_GAP) setLightLevel(0);
 		// (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
 		// (x - 0) * (50 - 0) / (1400 - 0) + 0
 		// x * 50 / 1400
 		// (99 - curDist * 99 / 2000)     //old version
-		else setLightLevel((uint8_t)(50 - curDist * 50 / 1400));
+		else setLightLevel((uint8_t)(50 - curDist * 50 / (MAX_DIST - MIN_DIST_GAP)));		// Map light level to the distance
 	}
-	configuration.config.dist_on = curDist;
+	configuration.config.dist_on = curDist;			// this will be checked during config save
 
 	//Fast blink 2 times
 	needConfig = 1;
 	fastBlink(2);
 
 	//Configure OFF distance
-	needConfig = 1;								// in case the button was touched during fast blinks
+	needConfig = 1;															// in case the button was touched during fast blinks
 	while (needConfig) {
 		HAL_Delay(250);
-		if (curDist > 1400) setLightLevel(0);
-		else setLightLevel((uint8_t)(50 - curDist * 50 / 1400));
+		if (curDist > MAX_DIST) setLightLevel(0);
+		else setLightLevel((uint8_t)(50 - curDist * 50 / MAX_DIST));		// Map light level to the distance
 	}
-	configuration.config.dist_off = curDist;
+	configuration.config.dist_off = curDist;		// this will be checked during config save
 
   saveConfig();
 
@@ -636,8 +641,8 @@ void HAL_GPIO_EXTI_Falling_Callback(uint16_t GPIO_Pin) {
 	// Range sensor interrupt (measurement is done)
 	if (TOF_Ready && GPIO_Pin == Sens_INT_Pin) {
 		dist = readRangeContinuousMillimeters(0);
-		if (dist < 1400)	curDist = dist;
-		else curDist = 1400;
+		if (dist < MAX_DIST)	curDist = dist;
+		else curDist = MAX_DIST;
 		if (!needConfig && !manualOn) {
 			if (curDist <= configuration.config.dist_on && curLightLevel < 90) {
 				//Turn on the lights
