@@ -216,8 +216,9 @@
     (tags "mounting hole 2.2mm no annular m2 din965")
     (property "Sheetfile" "DiLight_2.0.kicad_sch")
     (property "Sheetname" "")
+    (property "exclude_from_bom" "")
     (path "/6f3a1129-796d-41ee-b206-382a326a8e99")
-    (attr exclude_from_pos_files)
+    (attr exclude_from_pos_files exclude_from_bom)
     (fp_text reference "H1" (at 0 -2.9) (layer "F.SilkS") hide
       (effects (font (size 1 1) (thickness 0.15)))
       (tstamp 1c5ceb2d-7f98-402d-a2f6-75abe6fb3d97)
@@ -795,8 +796,9 @@
     (tags "mounting hole 2.2mm no annular m2 din965")
     (property "Sheetfile" "DiLight_2.0.kicad_sch")
     (property "Sheetname" "")
+    (property "exclude_from_bom" "")
     (path "/ae58227f-df2a-4ed7-9e17-3473ca69d8cf")
-    (attr exclude_from_pos_files)
+    (attr exclude_from_pos_files exclude_from_bom)
     (fp_text reference "H2" (at 0 -2.9) (layer "F.SilkS") hide
       (effects (font (size 1 1) (thickness 0.15)))
       (tstamp 9efd06b3-2cde-44ca-b1f1-ed11c540bf9a)
