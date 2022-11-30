@@ -18,5 +18,6 @@
 *.idb
 *.pdb
 
-firmware/Debug/
+firmware/[Rr]elease/
+firmware/[Dd]ebug/
 kicad/rev.2.0/DiLight_2.0-backups/
