@@ -1,6 +1,6 @@
 # DiLight
 
-###### Простой светильник с плавным включением и выключением света с датчиком расстояния vl53l0x от ST на базе STM32G030
+### Простой светильник с плавным включением и выключением света с датчиком расстояния vl53l0x от ST на базе STM32G030
 
 [Код main()](/firmware/Core/Src/main.c)
 
@@ -17,8 +17,21 @@
 
 [Интерактивный BOM-лист](/kicad/rev.2.0/bom/)
 
+В устройстве есть защита от переполюсовки птания (подключение с обратной полярностью), но нет защиты от превышения напряжения (12v) и от короткого замыкания по нагрузке. Целью была миниатюризация устройства.
 
-История:
+#### Фото реального устройства:
+
+![photo 1](/renders/photo1.jpg)
+![photo 2](/renders/photo2.jpg)
+
+#### Видео с демонстрацией работы:
+
+(кликнуть по изображению - ссылка на YouTube)
+
+[![YouTube video](http://img.youtube.com/vi/1dccDMPywVc/0.jpg)](http://www.youtube.com/watch?v=1dccDMPywVc)
+
+
+#### История:
 
 rev.2.0a:
 - Исправлена маркировка +/- для терминала LEDs
@@ -35,7 +48,7 @@ rev.1.1
 - винтовой терминал вместо "бочко-разъема" для шнура питания
 - MOSFET вместо диода в качестве защиты от обратной полярности питания
 
-Рендер платы:
+#### Рендер платы:
 rev.2.0a:
 ![PCB1 rev.2.0a](/renders/PCB1_2.0a.png)
 ![PCB2 rev.2.0a](/renders/PCB2_2.0a.png)
@@ -49,12 +62,15 @@ rev.1.1:
 ![PCB1 rev.1.1](/renders/PCB1_1.1.png)
 ![PCB2 rev.1.1](/renders/PCB2_1.1.png)
 
-Рендер:
+#### Рендер устройства:
 ![render1](/renders/DiLight_rev.2.0_2022-Nov-30_01-59-54AM-000_CustomizedView22145495987.png)
 ![render2](/renders/DiLight_2022-Aug-26_03-22-06PM-000_CustomizedView20665969842.png)
 ![render3](/renders/DiLight_2022-Aug-26_02-45-06PM-000_CustomizedView16817278455.png)
 ![render4](/renders/DiLight_2022-Aug-26_02-08-49PM-000_CustomizedView16817278455.png)
 
-Промежуточные фото платы (флюс не отмыт :) )
+#### Промежуточные фото платы (флюс не отмыт :) )
+![Photo21](/renders/pcb2.0_photo1.jpg)
+![Photo22](/renders/pcb2.0_photo2.jpg)
+![Photo23](/renders/pcb2.0_photo3.jpg)
 ![Photo1](/renders/01.jpg)
 ![Photo2](/renders/02.jpg)
