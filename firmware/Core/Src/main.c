@@ -41,6 +41,16 @@ struct FLASH_sector {
 	uint32_t checksum;	//Checksum to verify saved data
 };
 
+typedef enum DLMode_t_enum {
+	DL_normal = 0,
+	DL_manual_on,
+	DL_manual_off,
+	DL_need_config,
+	DL_config_waiting,
+	DL_config_accepted,
+	DL_error
+} DLMode_t;
+
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -85,10 +95,10 @@ uint8_t  TOF_Ready = 0;							// Flag to ignore TOF IRQ before it is initialized
 uint8_t  curLightLevel = 0;					// Current light level (0-99)
 uint16_t curDist = 0;								// Current measured distance in mm
 uint16_t btn_ticks;									// How many ticks the button is pressed (1 tick = 100ms)
-uint8_t  needConfig = 1;						// Need to configure the device. Timers won't "react" to events
-uint8_t  startConfig = 0;						// Flag to start configuration sequence
 int8_t   dLevel = 1;								// Direction of fade: -1 for fade out; 1 for fade in;
-uint8_t  manualOn = 0;							// Flag to indicate a manual on
+DLMode_t DLmode = DL_normal;				// Global mode: DL_normal, DL_manual_on, DL_manual_off, DL_need_config, DL_config_waiting, DL_config_accepted, DL_error
+DLMode_t prev_mode = DL_normal;			// To hold the mode during temporary mode switches
+uint8_t  modeSwitch = 0;						// Flag to switch the mode after the button tap
 
 /* USER CODE END PV */
 
@@ -130,11 +140,9 @@ volatile void loadConfig(void) {
 	if (HAL_CRC_Calculate(&hcrc, configuration.data32, 2) != configuration.sector.checksum
 			|| configuration.config.token != CONF_TOKEN) {
 		//First start or configuration is corrupted
-
 		saveConfig();  //Save dafault config
 	} // else successfully read the configuration
 
-	needConfig = 0;
 }
 
 //save configuration to FLASH
@@ -145,9 +153,9 @@ volatile void saveConfig(void) {
   uint32_t l_Error = 0;
 
   //We need it to erase a page
-  EraseInitStruct.TypeErase		= FLASH_TYPEERASE_PAGES;
-  EraseInitStruct.Page			= CONF_FLASH_PAGE;
-  EraseInitStruct.NbPages		= 1;
+  EraseInitStruct.TypeErase = FLASH_TYPEERASE_PAGES;
+  EraseInitStruct.Page      = CONF_FLASH_PAGE;
+  EraseInitStruct.NbPages   = 1;
 
   if (configuration.config.token != CONF_TOKEN) {
 	  //first start
@@ -186,8 +194,9 @@ volatile void saveConfig(void) {
 
 // Fast blink LEDs `count` times
 void fastBlink(uint8_t count) {
-	uint8_t i;
+	uint8_t i, pll;
 
+	pll = curLightLevel;
 	setLightLevel(0);
 	for (i = 0; i < count; i++) {
 		setLightLevel(99);
@@ -195,19 +204,18 @@ void fastBlink(uint8_t count) {
 		setLightLevel(0);
 		HAL_Delay(80);
 	}
+	setLightLevel(pll);
 }
 
 // Range configuration procedure (set on and off ranges)
 void configure(void) {
-	startConfig = 0;
+	DLmode = DL_config_waiting;
 
-	//Fast blink 3 times
-	needConfig = 1;
-	fastBlink(3);
+	//Fast blink 5 times
+	fastBlink(5);
 
 	//Configure ON distance
-	needConfig = 1;															// in case the button was touched during fast blinks
-	while (needConfig) {
+	while (DLmode == DL_config_waiting) {
 		HAL_Delay(250);
 		if (curDist > MAX_DIST - MIN_DIST_GAP) setLightLevel(0);
 		// (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
@@ -219,12 +227,11 @@ void configure(void) {
 	configuration.config.dist_on = curDist;			// this will be checked during config save
 
 	//Fast blink 2 times
-	needConfig = 1;
+	DLmode = DL_config_waiting;
 	fastBlink(2);
 
 	//Configure OFF distance
-	needConfig = 1;															// in case the button was touched during fast blinks
-	while (needConfig) {
+	while (DLmode == DL_config_waiting) {
 		HAL_Delay(250);
 		if (curDist > MAX_DIST) setLightLevel(0);
 		else setLightLevel((uint8_t)(50 - curDist * 50 / MAX_DIST));		// Map light level to the distance
@@ -234,10 +241,7 @@ void configure(void) {
   saveConfig();
 
 	//Fast blink 5 times
-  needConfig = 1;
   fastBlink(5);
-
-	needConfig = 0;
 }
 
 /* USER CODE END 0 */
@@ -312,11 +316,37 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-  	if (startConfig) {
+  	if (DLmode == DL_need_config) {
   		configure();
+  		DLmode = prev_mode;
   	}
 
-  	HAL_Delay(100);
+  	// Check if the button was tapped and we should switch the mode
+  	if (modeSwitch) {
+  		modeSwitch = 0;
+  		switch (DLmode) {
+				case DL_normal:
+					DLmode = DL_manual_on;
+					fastBlink(1);
+					dLevel = 2;
+					HAL_TIM_Base_Start_IT(&htim17);
+					break;
+				case DL_manual_on:
+					DLmode = DL_manual_off;
+					fastBlink(1);
+					dLevel = -1;
+					HAL_TIM_Base_Start_IT(&htim17);
+					break;
+				case DL_manual_off:
+					DLmode = DL_normal;
+					fastBlink(2);
+					break;
+				default:
+					break;
+			}
+		}
+
+  	HAL_Delay(50);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -643,7 +673,7 @@ void HAL_GPIO_EXTI_Falling_Callback(uint16_t GPIO_Pin) {
 		dist = readRangeContinuousMillimeters(0);
 		if (dist < MAX_DIST)	curDist = dist;
 		else curDist = MAX_DIST;
-		if (!needConfig && !manualOn) {
+		if (DLmode == DL_normal) {
 			if (curDist <= configuration.config.dist_on && curLightLevel < 90) {
 				//Turn on the lights
 				dLevel = 2;
@@ -662,42 +692,34 @@ void HAL_GPIO_EXTI_Falling_Callback(uint16_t GPIO_Pin) {
 		HAL_TIM_Base_Stop_IT(&htim16);
 		if (btn_ticks < 60) {
 			// Button was not held for more than 6 seconds
-			if (needConfig) {
-				needConfig = 0;
+			if (DLmode == DL_config_waiting) {
+				DLmode = DL_config_accepted;
 			} else {
-				if (curLightLevel < 90){
-					//Manual turn on
-					manualOn = 1;
-					dLevel = 2;
-					HAL_TIM_Base_Start_IT(&htim17);
-				}	else {
-					//Manual turn off
-					manualOn = 0;
-					dLevel = -1;
-					HAL_TIM_Base_Start_IT(&htim17);
-				}
-				setLightLevel(curLightLevel);
+				modeSwitch = 1;
 			}
 		}
 	}
 }
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
-	if(htim->Instance == TIM16) { //check if the interrupt comes from TIM16
+	if(htim->Instance == TIM16) { //check if the interrupt comes from TIM16   // TIM16 - ticks timer (10Hz - 100ms)
 		if (btn_ticks < 60) {
 			btn_ticks++;
-		} else {		// the button is held for more than 6 seconds
+		} else {
+			// the button is held for more than 6 seconds
 			HAL_TIM_Base_Stop_IT(&htim16);
-			startConfig = 1;
+			prev_mode = DLmode;
+			DLmode = DL_need_config;
 		}
 	}
 
 	// Fade-in / fade-out animation
-	if(htim->Instance == TIM17) { //check if the interrupt comes from TIM17
-		curLightLevel += dLevel;
-		setLightLevel(curLightLevel);
-		if (curLightLevel >= 99 || curLightLevel <= 0) {
+	if(htim->Instance == TIM17) { //check if the interrupt comes from TIM17  // TIM17 - timer for light fading
+		if ((curLightLevel >= 99 && dLevel > 0) || (curLightLevel == 0 && dLevel < 0)) {
 			HAL_TIM_Base_Stop_IT(&htim17);
+		} else {
+			curLightLevel += dLevel;
+			setLightLevel(curLightLevel);
 		}
 	}
 }
