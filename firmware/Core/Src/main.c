@@ -101,6 +101,7 @@ int8_t   dLevel = 1;								// Direction of fade: -1 for fade out; 1 for fade in
 //uint8_t  manualOn = 0;							// Flag to indicate a manual on
 DLMode_t DLmode = DL_normal;				// Global mode: DL_normal, DL_manual_on, DL_manual_off, DL_need_config, DL_config_waiting, DL_config_accepted, DL_error
 DLMode_t prev_mode = DL_normal;
+uint8_t  modeSwitch = 0;					// Flag to switch the mode after the button tap
 
 /* USER CODE END PV */
 
@@ -197,8 +198,9 @@ volatile void saveConfig(void) {
 
 // Fast blink LEDs `count` times
 void fastBlink(uint8_t count) {
-	uint8_t i;
+	uint8_t i, pll;
 
+	pll = curLightLevel;
 	setLightLevel(0);
 	for (i = 0; i < count; i++) {
 		setLightLevel(99);
@@ -206,6 +208,7 @@ void fastBlink(uint8_t count) {
 		setLightLevel(0);
 		HAL_Delay(80);
 	}
+	setLightLevel(pll);
 }
 
 // Range configuration procedure (set on and off ranges)
@@ -326,12 +329,35 @@ int main(void)
   while (1)
   {
   	if (DLmode == DL_need_config) {
-  		prev_mode = DLmode;
   		configure();
   		DLmode = prev_mode;
   	}
 
-  	HAL_Delay(100);
+  	if (modeSwitch) {
+  		modeSwitch = 0;
+  		switch (DLmode) {
+			case DL_normal:
+				DLmode = DL_manual_on;
+				fastBlink(1);
+				dLevel = 2;
+				HAL_TIM_Base_Start_IT(&htim17);
+				break;
+			case DL_manual_on:
+				DLmode = DL_manual_off;
+				fastBlink(1);
+				dLevel = -1;
+				HAL_TIM_Base_Start_IT(&htim17);
+				break;
+			case DL_manual_off:
+				DLmode = DL_normal;
+				fastBlink(2);
+				break;
+			default:
+				break;
+		}
+  	}
+
+  	HAL_Delay(50);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -681,26 +707,7 @@ void HAL_GPIO_EXTI_Falling_Callback(uint16_t GPIO_Pin) {
 					//needConfig = 0;
 				DLmode = DL_config_accepted;
 			} else {
-				switch (DLmode) {
-					case DL_normal:
-						DLmode = DL_manual_on;
-						fastBlink(2);
-						dLevel = 2;
-						HAL_TIM_Base_Start_IT(&htim17);
-						break;
-					case DL_manual_on:
-						DLmode = DL_manual_off;
-						fastBlink(3);
-						dLevel = -1;
-						HAL_TIM_Base_Start_IT(&htim17);
-						break;
-					case DL_manual_off:
-						DLmode = DL_normal;
-						fastBlink(1);
-						break;
-					default:
-						break;
-				}
+				modeSwitch = 1;
 			}
 		}
 	}
@@ -713,16 +720,18 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 		} else {		// the button is held for more than 6 seconds
 			HAL_TIM_Base_Stop_IT(&htim16);
 				//startConfig = 1;
+			prev_mode = DLmode;
 			DLmode = DL_need_config;
 		}
 	}
 
 	// Fade-in / fade-out animation
 	if(htim->Instance == TIM17) { //check if the interrupt comes from TIM17  // TIM17 - timer for light fading
-		curLightLevel += dLevel;
-		setLightLevel(curLightLevel);
-		if (curLightLevel >= 99 || curLightLevel <= 0) {
+		if ((curLightLevel >= 99 && dLevel > 0) || (curLightLevel == 0 && dLevel < 0)) {
 			HAL_TIM_Base_Stop_IT(&htim17);
+		} else {
+			curLightLevel += dLevel;
+			setLightLevel(curLightLevel);
 		}
 	}
 }
