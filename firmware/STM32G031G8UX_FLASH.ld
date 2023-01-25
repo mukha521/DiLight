@@ -45,7 +45,8 @@ _Min_Stack_Size = 0x400 ; /* required amount of stack */
 MEMORY
 {
   RAM    (xrw)    : ORIGIN = 0x20000000,   LENGTH = 8K
-  FLASH    (rx)    : ORIGIN = 0x8000000,   LENGTH = 62K
+  FLASH   (rx)    : ORIGIN = 0x8000000,    LENGTH = 62K
+  CONF   (rwx)    : ORIGIN = 0x800F800,    LENGTH = 2K
 }
 
 /* Sections */
@@ -172,6 +173,13 @@ SECTIONS
     . = . + _Min_Stack_Size;
     . = ALIGN(8);
   } >RAM
+
+  .conf_data :
+  {
+    . = ALIGN(4);
+    *(.conf_data)
+    . = ALIGN(4);
+  } > CONF
 
   /* Remove information from the compiler libraries */
   /DISCARD/ :

@@ -83,6 +83,8 @@ TIM_HandleTypeDef htim17;
 
 /* USER CODE BEGIN PV */
 
+//volatile const uint8_t config_flash[1024 * 2] __attribute__((__section__(".conf_data")));
+
 union FLASH_conf {
 	  conf_t config;
 	  struct FLASH_sector sector;
